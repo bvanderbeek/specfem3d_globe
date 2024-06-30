@@ -924,6 +924,7 @@
   integer, parameter :: THREE_D_MODEL_SPIRAL        = 118
   integer, parameter :: THREE_D_MODEL_HETEROGEN_PREM = 119
   integer, parameter :: THREE_D_MODEL_SH_MARS       = 120
+  integer, parameter :: THREE_D_MODEL_ANISO_MANTLE_DREX  = 121
   ! inner core model
   integer, parameter :: THREE_D_MODEL_INNER_CORE_ISHII = 201
 
