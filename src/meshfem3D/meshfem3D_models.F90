@@ -220,6 +220,10 @@
         ! Montagner anisotropic model
         call model_aniso_mantle_broadcast()
 
+      case (THREE_D_MODEL_ANISO_MANTLE_DREX)
+        ! Drex anisotropic mantle model
+        call model_aniso_mantle_drex_broadcast()   
+      
       case (THREE_D_MODEL_BKMNS_GLAD)
         ! GLAD model expansion on block-mantle-spherical-harmonics
         if (myrank == 0) write(IMAIN,*) 'setting up both s362ani and bkmns models...'
@@ -626,6 +630,7 @@
                                             ispec,i,j,k)
 
   use meshfem_models_par
+  use constants, only: EARTH_R,EARTH_RHOAV,GRAV,PI
 
   implicit none
 
@@ -645,8 +650,8 @@
   integer, intent(in) :: ispec, i, j, k
 
   ! local parameters
-  double precision :: r_used
-  double precision :: dvp,dvs,drho,vp,vs,moho,sediment
+  double precision :: scaleval,scale_GPa,r_used,r_dummy,min_lon,max_lon,min_colat,max_colat,lon_step,colat_step
+  double precision :: dvp,dvs,drho,vp,vs,moho,sediment,Nparam,Lparam,E_Chi,PwaveMod,SwaveMod
   double precision :: dvpv,dvph,dvsv,dvsh,deta
   double precision :: lat,lon
   double precision :: A,C,L,N,F
@@ -894,6 +899,71 @@
                                   c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
                                   c33,c34,c35,c36,c44,c45,c46,c55,c56,c66)
 
+        case (THREE_D_MODEL_ANISO_MANTLE_DREX)
+          ! Drex anisotropic model
+         
+        ! Following Elodie's advice 04/09/2020
+        if (r_prem>RCMB/EARTH_R .and. r_prem<RMOHO/EARTH_R)  then !!ELODIE 
+               ! 14/07/2020 Rappisi ---> if you don't use r_used=r_prem you get problems at discontinuities 
+               r_used = r_prem
+        else  
+               r_used=RMOHO/EARTH_R
+        endif  
+
+         call model_aniso_mantle_drex(r_used,theta,phi,&
+                                  rho,c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
+                                  c33,c34,c35,c36,c44,c45,c46,c55,c56,c66)
+                
+                ! calculate velocities for visualization (must be in local
+                ! (radial) coordinates system
+                vpv = sqrt(c33/rho)
+                vph = sqrt(c11/rho)
+                vsv = sqrt(c44/rho)
+                vsh = sqrt(0.5d0*((c11-c12)/rho))
+                eta_aniso = c13/(c11 - 2.d0*c44)
+
+                ! 14/10/2020 just for the plot of isotropic velocities otherwise
+                ! the code plots vsv 
+                vp = sqrt( ((8.d0+4.d0*eta_aniso)*vph*vph + 3.d0*vpv*vpv &
+                          + (8.d0 - 8.d0*eta_aniso)*vsv*vsv)/15.d0 )
+                vs = sqrt( ((1.d0-2.d0*eta_aniso)*vph*vph + vpv*vpv &
+                          + 5.d0*vsh*vsh + (6.d0+4.d0*eta_aniso)*vsv*vsv)/15.d0)
+
+                ! activate these 5 lines if you want to plot the isotropic velocities
+                !vpv = vp
+                !vph = vp
+                !vsv = vs
+                !vsh = vs
+                !eta_aniso = 1.d0
+
+                Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
+                Lparam = (1.d0/2.d0)*(c44+c55)
+                scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
+                E_Chi = (Nparam/Lparam)
+                ! put vpv=E_Chi if you want to plot radial anisotropy instead of vpv
+                ! vpv = E_Chi*1000.0d0/(scaleval*R_EARTH)
+
+                ! 9/03/2021 rotate from radial (local) to global, needed to calculate
+                ! seismograms; NB: this rotation is needed only if the tensor is
+                ! in radial system 
+                call rotate_tensor_radial_to_global(theta,phi,c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
+                                        c33,c34,c35,c36,c44,c45,c46,c55,c56,c66, &
+                                        c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
+                                        c33,c34,c35,c36,c44,c45,c46,c55,c56,c66)
+
+
+                !04/06/2020 - Find isotropic P and S waves moduli
+                PwaveMod = (3.d0/15.d0)*(c11+c22+c33)+(2.d0/15.d0)*(c23+c13+c12)+(4.d0/15.d0)*(c44+c55+c66)
+                SwaveMod = (1.d0/15.d0)*(c11+c22+c33)-(1.d0/15.d0)*(c23+c13+c12)+(3.d0/15.d0)*(c44+c55+c66)
+
+                ! calculate isotropic velocities from anisotropic tensor if necessary
+                !vph = sqrt(PwaveMod/rho) 
+                !vpv = vph
+                !vsh = sqrt(SwaveMod/rho)
+                !vsv = vsh
+                !eta_aniso = 1.d0
+
+
         case (THREE_D_MODEL_BKMNS_GLAD)
           ! GLAD model expansion on block-mantle-spherical-harmonics
           ! model takes actual position (includes topography between 80km depth and surface topo)
@@ -1011,7 +1081,7 @@
 
     ! special case for fully anisotropic models
     ! anisotropic models defined between the Moho and 670 km (change to CMB if desired)
-    if (THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE) then
+    if (THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE .or. THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE_DREX) then
       ! special case for model_aniso_mantle()
       if (suppress_mantle_extension) then
         ! point is in crust, and CRUSTAL == .false. (no 3D crustal model); model_aniso_mantle() hasn't been called.

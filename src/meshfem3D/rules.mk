@@ -89,6 +89,7 @@ meshfem3D_MESHER_OBJECTS = \
 	$O/model_sea1d.check.o \
 	$O/model_aniso_inner_core.check.o \
 	$O/model_aniso_mantle.check.o \
+	$O/model_aniso_mantle_drex.check.o \
 	$O/model_atten3D_QRFSI12.check.o \
 	$O/model_attenuation_gll.check.o \
 	$O/model_attenuation.check.o \
@@ -153,6 +154,7 @@ meshfem3D_MODULES = \
 	$(FC_MODDIR)/model_1dref_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_ak135_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_aniso_mantle_par.$(FC_MODEXT) \
+	$(FC_MODDIR)/model_aniso_mantle_drex_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_atten3d_qrfsi12_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_attenuation_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_bkmns_par.$(FC_MODEXT) \

@@ -1,0 +1,820 @@
+!=====================================================================
+!
+!          S p e c f e m 3 D  G l o b e  V e r s i o n  7 . 0
+!          --------------------------------------------------
+!
+!     Main historical authors: Dimitri Komatitsch and Jeroen Tromp
+!                        Princeton University, USA
+!                and CNRS / University of Marseille, France
+!                 (there are currently many more authors!)
+! (c) Princeton University and CNRS / University of Marseille, April 2014
+!
+! This program is free software; you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation; either version 3 of the License, or
+! (at your option) any later version.
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License along
+! with this program; if not, write to the Free Software Foundation, Inc.,
+! 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+!
+!=====================================================================
+
+!--------------------------------------------------------------------------------------------------
+! PREM by SUNG-JOON CHANG
+!
+! Spherically symmetric earth model PREMSJ furnished by Sung-Joon Chang
+!
+! When ATTENUATION is on, it uses an unpublished 1D attenuation model from Scripps.
+!--------------------------------------------------------------------------------------------------
+
+  module model_premsj_par
+
+  ! number of layers
+  integer, parameter :: NR_PREMSJ = 101
+
+  ! model_PREMSJ_variables
+  double precision, dimension(:),allocatable :: &
+    MPREMSJ_V_radius_PREMSJ,MPREMSJ_V_density_PREMSJ, &
+    MPREMSJ_V_vp_PREMSJ,MPREMSJ_V_vs_PREMSJ, &
+    MPREMSJ_V_Qkappa_PREMSJ,MPREMSJ_V_Qmu_PREMSJ
+
+  end module model_premsj_par
+
+!
+!--------------------------------------------------------------------------------------------------
+!
+
+  subroutine model_premsj_broadcast(CRUSTAL)
+
+! standard routine to setup model
+
+  use constants, only: myrank
+  use model_premsj_par
+
+  implicit none
+
+  logical :: CRUSTAL
+
+  ! local parameters
+  integer :: ier
+
+  ! allocates model arrays
+  allocate(MPREMSJ_V_radius_PREMSJ(NR_PREMSJ), &
+          MPREMSJ_V_density_PREMSJ(NR_PREMSJ), &
+          MPREMSJ_V_vp_PREMSJ(NR_PREMSJ), &
+          MPREMSJ_V_vs_PREMSJ(NR_PREMSJ), &
+          MPREMSJ_V_Qkappa_PREMSJ(NR_PREMSJ), &
+          MPREMSJ_V_Qmu_PREMSJ(NR_PREMSJ), &
+          stat=ier)
+  if (ier /= 0 ) call exit_MPI(myrank,'Error allocating MPREMSJ_V arrays')
+
+  ! all processes will define same parameters
+   call define_model_premsj(CRUSTAL)  
+
+  end subroutine model_premsj_broadcast
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine model_premsj(x,rho,vp,vs,Qkappa,Qmu,iregion_code)
+
+  use constants
+  use model_premsj_par
+
+  implicit none
+
+! input:
+! radius r: meters
+
+! output:
+! density rho: kg/m^3  ????
+! compressional wave speed vp: km/s
+! shear wave speed vs: km/s
+
+  double precision :: x,rho,vp,vs,Qmu,Qkappa
+  integer :: iregion_code
+
+  ! local parameters
+  double precision :: r,frac,scaleval
+  integer :: i
+
+  ! compute real physical radius in meters
+  r = x * R_EARTH
+
+  i = 1
+  do while(r >= MPREMSJ_V_radius_PREMSJ(i) .and. i /= NR_PREMSJ)
+    i = i + 1
+  enddo
+
+! make sure we stay in the right region and never take a point above
+! and a point below the ICB or the CMB and interpolate between them,
+! which would lead to a wrong value (keeping in mind that we interpolate
+! between points i-1 and i below)
+  if (iregion_code == IREGION_INNER_CORE .and. i > 14) i = 14
+
+  if (iregion_code == IREGION_OUTER_CORE .and. i < 16) i = 16
+  if (iregion_code == IREGION_OUTER_CORE .and. i > 38) i = 38
+
+  if (iregion_code == IREGION_CRUST_MANTLE .and. i < 40) i = 40
+
+  if (i == 1) then
+    rho = MPREMSJ_V_density_PREMSJ(i)
+    vp = MPREMSJ_V_vp_PREMSJ(i)
+    vs = MPREMSJ_V_vs_PREMSJ(i)
+    Qmu = MPREMSJ_V_Qmu_PREMSJ(i)
+    Qkappa = MPREMSJ_V_Qkappa_PREMSJ(i)
+  else
+
+! interpolate from radius_PREMSJ(i-1) to r using the values at i-1 and i
+    frac = (r-MPREMSJ_V_radius_PREMSJ(i-1))/(MPREMSJ_V_radius_PREMSJ(i)-MPREMSJ_V_radius_PREMSJ(i-1))
+
+    rho = MPREMSJ_V_density_PREMSJ(i-1) + frac * (MPREMSJ_V_density_PREMSJ(i)-MPREMSJ_V_density_PREMSJ(i-1))
+    vp = MPREMSJ_V_vp_PREMSJ(i-1) + frac * (MPREMSJ_V_vp_PREMSJ(i)-MPREMSJ_V_vp_PREMSJ(i-1))
+    vs = MPREMSJ_V_vs_PREMSJ(i-1) + frac * (MPREMSJ_V_vs_PREMSJ(i)-MPREMSJ_V_vs_PREMSJ(i-1))
+    Qmu = MPREMSJ_V_Qmu_PREMSJ(i-1) + frac * (MPREMSJ_V_Qmu_PREMSJ(i)-MPREMSJ_V_Qmu_PREMSJ(i-1))
+    Qkappa = MPREMSJ_V_Qkappa_PREMSJ(i-1) + frac * (MPREMSJ_V_Qkappa_PREMSJ(i)-MPREMSJ_V_Qkappa_PREMSJ(i-1))
+
+  endif
+
+! make sure Vs is zero in the outer core even if roundoff errors on depth
+! also set fictitious attenuation to a very high value (attenuation is not used in the fluid)
+  if (iregion_code == IREGION_OUTER_CORE) then
+    vs = 0.d0
+    Qkappa = 57822.d0 !3000.d0
+    Qmu = 0.d0 !3000.d0
+  endif
+
+! non-dimensionalize
+! time scaling (s^{-1}) is done with scaleval
+  scaleval = dsqrt(PI*GRAV*RHOAV)
+  rho = rho*1000.0d0/RHOAV
+  vp = vp*1000.0d0/(R_EARTH*scaleval)
+  vs = vs*1000.0d0/(R_EARTH*scaleval)
+
+  end subroutine model_premsj
+
+!-------------------
+
+  subroutine define_model_premsj(USE_EXTERNAL_CRUSTAL_MODEL)
+
+  use constants
+  use model_premsj_par
+
+  implicit none
+
+  logical :: USE_EXTERNAL_CRUSTAL_MODEL
+
+  ! local parameters
+  integer :: i
+
+! define all the values in the model
+
+
+MPREMSJ_V_radius_PREMSJ(1) =      0.d0
+MPREMSJ_V_radius_PREMSJ(2) = 100000.d0
+MPREMSJ_V_radius_PREMSJ(3) = 200000.d0
+MPREMSJ_V_radius_PREMSJ(4) = 300000.d0
+MPREMSJ_V_radius_PREMSJ(5) = 400000.d0
+MPREMSJ_V_radius_PREMSJ(6) = 500000.d0
+MPREMSJ_V_radius_PREMSJ(7) = 600000.d0
+MPREMSJ_V_radius_PREMSJ(8) = 700000.d0
+MPREMSJ_V_radius_PREMSJ(9) = 800000.d0
+MPREMSJ_V_radius_PREMSJ(10) = 900000.d0
+MPREMSJ_V_radius_PREMSJ(11) = 1000000.d0
+MPREMSJ_V_radius_PREMSJ(12) = 1100000.d0
+MPREMSJ_V_radius_PREMSJ(13) = 1200000.d0
+MPREMSJ_V_radius_PREMSJ(14) = 1221500.d0
+MPREMSJ_V_radius_PREMSJ(15) = 1221500.d0
+MPREMSJ_V_radius_PREMSJ(16) = 1300000.d0
+MPREMSJ_V_radius_PREMSJ(17) = 1400000.d0
+MPREMSJ_V_radius_PREMSJ(18) = 1500000.d0
+MPREMSJ_V_radius_PREMSJ(19) = 1600000.d0
+MPREMSJ_V_radius_PREMSJ(20) = 1700000.d0
+MPREMSJ_V_radius_PREMSJ(21) = 1800000.d0
+MPREMSJ_V_radius_PREMSJ(22) = 1900000.d0
+MPREMSJ_V_radius_PREMSJ(23) = 2000000.d0
+MPREMSJ_V_radius_PREMSJ(24) = 2100000.d0
+MPREMSJ_V_radius_PREMSJ(25) = 2200000.d0
+MPREMSJ_V_radius_PREMSJ(26) = 2300000.d0
+MPREMSJ_V_radius_PREMSJ(27) = 2400000.d0
+MPREMSJ_V_radius_PREMSJ(28) = 2500000.d0
+MPREMSJ_V_radius_PREMSJ(29) = 2600000.d0
+MPREMSJ_V_radius_PREMSJ(30) = 2700000.d0
+MPREMSJ_V_radius_PREMSJ(31) = 2800000.d0
+MPREMSJ_V_radius_PREMSJ(32) = 2900000.d0
+MPREMSJ_V_radius_PREMSJ(33) = 3000000.d0
+MPREMSJ_V_radius_PREMSJ(34) = 3100000.d0
+MPREMSJ_V_radius_PREMSJ(35) = 3200000.d0
+MPREMSJ_V_radius_PREMSJ(36) = 3300000.d0
+MPREMSJ_V_radius_PREMSJ(37) = 3400000.d0
+MPREMSJ_V_radius_PREMSJ(38) = 3480000.d0
+MPREMSJ_V_radius_PREMSJ(39) = 3480000.d0
+MPREMSJ_V_radius_PREMSJ(40) = 3500000.d0
+MPREMSJ_V_radius_PREMSJ(41) = 3600000.d0
+MPREMSJ_V_radius_PREMSJ(42) = 3630000.d0
+MPREMSJ_V_radius_PREMSJ(43) = 3700000.d0
+MPREMSJ_V_radius_PREMSJ(44) = 3800000.d0
+MPREMSJ_V_radius_PREMSJ(45) = 3900000.d0
+MPREMSJ_V_radius_PREMSJ(46) = 4000000.d0
+MPREMSJ_V_radius_PREMSJ(47) = 4100000.d0
+MPREMSJ_V_radius_PREMSJ(48) = 4200000.d0
+MPREMSJ_V_radius_PREMSJ(49) = 4300000.d0
+MPREMSJ_V_radius_PREMSJ(50) = 4400000.d0
+MPREMSJ_V_radius_PREMSJ(51) = 4500000.d0
+MPREMSJ_V_radius_PREMSJ(52) = 4600000.d0
+MPREMSJ_V_radius_PREMSJ(53) = 4700000.d0
+MPREMSJ_V_radius_PREMSJ(54) = 4800000.d0
+MPREMSJ_V_radius_PREMSJ(55) = 4900000.d0
+MPREMSJ_V_radius_PREMSJ(56) = 5000000.d0
+MPREMSJ_V_radius_PREMSJ(57) = 5100000.d0
+MPREMSJ_V_radius_PREMSJ(58) = 5200000.d0
+MPREMSJ_V_radius_PREMSJ(59) = 5300000.d0
+MPREMSJ_V_radius_PREMSJ(60) = 5400000.d0
+MPREMSJ_V_radius_PREMSJ(61) = 5500000.d0
+MPREMSJ_V_radius_PREMSJ(62) = 5600000.d0
+MPREMSJ_V_radius_PREMSJ(63) = 5650000.d0
+MPREMSJ_V_radius_PREMSJ(64) = 5701000.d0
+MPREMSJ_V_radius_PREMSJ(65) = 5701000.d0   !670km
+MPREMSJ_V_radius_PREMSJ(66) = 5736000.d0
+MPREMSJ_V_radius_PREMSJ(67) = 5771000.d0
+MPREMSJ_V_radius_PREMSJ(68) = 5821000.d0
+MPREMSJ_V_radius_PREMSJ(69) = 5871000.d0
+MPREMSJ_V_radius_PREMSJ(70) = 5921000.d0
+MPREMSJ_V_radius_PREMSJ(71) = 5971000.d0 
+MPREMSJ_V_radius_PREMSJ(72) = 5971000.d0   !400km
+MPREMSJ_V_radius_PREMSJ(73) = 6016000.d0
+MPREMSJ_V_radius_PREMSJ(74) = 6061000.d0
+MPREMSJ_V_radius_PREMSJ(75) = 6106000.d0
+MPREMSJ_V_radius_PREMSJ(76) = 6151000.d0
+MPREMSJ_V_radius_PREMSJ(77) = 6151000.d0   !220km
+MPREMSJ_V_radius_PREMSJ(78) = 6171000.d0
+MPREMSJ_V_radius_PREMSJ(79) = 6191000.d0
+MPREMSJ_V_radius_PREMSJ(80) = 6211000.d0
+MPREMSJ_V_radius_PREMSJ(81) = 6231000.d0
+MPREMSJ_V_radius_PREMSJ(82) = 6251000.d0
+MPREMSJ_V_radius_PREMSJ(83) = 6271000.d0
+MPREMSJ_V_radius_PREMSJ(84) = 6291000.d0 
+MPREMSJ_V_radius_PREMSJ(85) = 6291000.d0   !80km  
+MPREMSJ_V_radius_PREMSJ(86) = 6311000.d0
+MPREMSJ_V_radius_PREMSJ(87) = 6331000.d0
+MPREMSJ_V_radius_PREMSJ(88) = 6346600.d0
+MPREMSJ_V_radius_PREMSJ(89) = 6346600.d0
+MPREMSJ_V_radius_PREMSJ(90) = 6348600.d0
+MPREMSJ_V_radius_PREMSJ(91) = 6350600.d0
+MPREMSJ_V_radius_PREMSJ(92) = 6352600.d0
+MPREMSJ_V_radius_PREMSJ(93) = 6354600.d0
+MPREMSJ_V_radius_PREMSJ(94) = 6356000.d0
+MPREMSJ_V_radius_PREMSJ(95) = 6356000.d0
+MPREMSJ_V_radius_PREMSJ(96) = 6358000.d0
+MPREMSJ_V_radius_PREMSJ(97) = 6360000.d0
+MPREMSJ_V_radius_PREMSJ(98) = 6362000.d0
+MPREMSJ_V_radius_PREMSJ(99) = 6364000.d0
+MPREMSJ_V_radius_PREMSJ(100) = 6366000.d0
+MPREMSJ_V_radius_PREMSJ(101) = 6371000.d0
+
+
+MPREMSJ_V_density_PREMSJ(1) = 13.08848d0
+MPREMSJ_V_density_PREMSJ(2) = 13.08630d0
+MPREMSJ_V_density_PREMSJ(3) = 13.07977d0
+MPREMSJ_V_density_PREMSJ(4) = 13.06888d0
+MPREMSJ_V_density_PREMSJ(5) = 13.05364d0
+MPREMSJ_V_density_PREMSJ(6) = 13.03404d0
+MPREMSJ_V_density_PREMSJ(7) = 13.01009d0
+MPREMSJ_V_density_PREMSJ(8) = 12.98178d0
+MPREMSJ_V_density_PREMSJ(9) = 12.94912d0
+MPREMSJ_V_density_PREMSJ(10) = 12.91211d0
+MPREMSJ_V_density_PREMSJ(11) = 12.87073d0
+MPREMSJ_V_density_PREMSJ(12) = 12.82501d0
+MPREMSJ_V_density_PREMSJ(13) = 12.77493d0
+MPREMSJ_V_density_PREMSJ(14) = 12.76360d0
+MPREMSJ_V_density_PREMSJ(15) = 12.16634d0
+MPREMSJ_V_density_PREMSJ(16) = 12.12500d0
+MPREMSJ_V_density_PREMSJ(17) = 12.06924d0
+MPREMSJ_V_density_PREMSJ(18) = 12.00989d0
+MPREMSJ_V_density_PREMSJ(19) = 11.94682d0
+MPREMSJ_V_density_PREMSJ(20) = 11.87990d0
+MPREMSJ_V_density_PREMSJ(21) = 11.80900d0
+MPREMSJ_V_density_PREMSJ(22) = 11.73401d0
+MPREMSJ_V_density_PREMSJ(23) = 11.65478d0
+MPREMSJ_V_density_PREMSJ(24) = 11.57119d0
+MPREMSJ_V_density_PREMSJ(25) = 11.48311d0
+MPREMSJ_V_density_PREMSJ(26) = 11.39042d0
+MPREMSJ_V_density_PREMSJ(27) = 11.29298d0
+MPREMSJ_V_density_PREMSJ(28) = 11.19067d0
+MPREMSJ_V_density_PREMSJ(29) = 11.08335d0
+MPREMSJ_V_density_PREMSJ(30) = 10.97091d0
+MPREMSJ_V_density_PREMSJ(31) = 10.85321d0
+MPREMSJ_V_density_PREMSJ(32) = 10.73012d0
+MPREMSJ_V_density_PREMSJ(33) = 10.60152d0
+MPREMSJ_V_density_PREMSJ(34) = 10.46727d0
+MPREMSJ_V_density_PREMSJ(35) = 10.32726d0
+MPREMSJ_V_density_PREMSJ(36) = 10.18134d0
+MPREMSJ_V_density_PREMSJ(37) = 10.02940d0
+MPREMSJ_V_density_PREMSJ(38) =  9.90349d0
+MPREMSJ_V_density_PREMSJ(39) =  5.56645d0
+MPREMSJ_V_density_PREMSJ(40) =  5.55641d0
+MPREMSJ_V_density_PREMSJ(41) =  5.50642d0
+MPREMSJ_V_density_PREMSJ(42) =  5.49145d0
+MPREMSJ_V_density_PREMSJ(43) =  5.45657d0
+MPREMSJ_V_density_PREMSJ(44) =  5.40681d0
+MPREMSJ_V_density_PREMSJ(45) =  5.35706d0
+MPREMSJ_V_density_PREMSJ(46) =  5.30724d0
+MPREMSJ_V_density_PREMSJ(47) =  5.25729d0
+MPREMSJ_V_density_PREMSJ(48) =  5.20713d0
+MPREMSJ_V_density_PREMSJ(49) =  5.15669d0
+MPREMSJ_V_density_PREMSJ(50) =  5.10590d0
+MPREMSJ_V_density_PREMSJ(51) =  5.05469d0
+MPREMSJ_V_density_PREMSJ(52) =  5.00299d0
+MPREMSJ_V_density_PREMSJ(53) =  4.95073d0
+MPREMSJ_V_density_PREMSJ(54) =  4.89783d0
+MPREMSJ_V_density_PREMSJ(55) =  4.84422d0
+MPREMSJ_V_density_PREMSJ(56) =  4.78983d0
+MPREMSJ_V_density_PREMSJ(57) =  4.73460d0
+MPREMSJ_V_density_PREMSJ(58) =  4.67844d0
+MPREMSJ_V_density_PREMSJ(59) =  4.62129d0
+MPREMSJ_V_density_PREMSJ(60) =  4.56307d0
+MPREMSJ_V_density_PREMSJ(61) =  4.50372d0
+MPREMSJ_V_density_PREMSJ(62) =  4.44316d0
+MPREMSJ_V_density_PREMSJ(63) =  4.41241d0
+MPREMSJ_V_density_PREMSJ(64) =  4.38071d0
+MPREMSJ_V_density_PREMSJ(65) =  3.99214d0
+MPREMSJ_V_density_PREMSJ(66) =  3.98399d0
+MPREMSJ_V_density_PREMSJ(67) =  3.97584d0
+MPREMSJ_V_density_PREMSJ(68) =  3.91282d0
+MPREMSJ_V_density_PREMSJ(69) =  3.84980d0
+MPREMSJ_V_density_PREMSJ(70) =  3.78678d0
+MPREMSJ_V_density_PREMSJ(71) =  3.72378d0
+MPREMSJ_V_density_PREMSJ(72) =  3.54325d0
+MPREMSJ_V_density_PREMSJ(73) =  3.51639d0
+MPREMSJ_V_density_PREMSJ(74) =  3.48951d0
+MPREMSJ_V_density_PREMSJ(75) =  3.46264d0
+MPREMSJ_V_density_PREMSJ(76) =  3.43578d0
+MPREMSJ_V_density_PREMSJ(77) =  3.35950d0
+MPREMSJ_V_density_PREMSJ(78) =  3.36167d0
+MPREMSJ_V_density_PREMSJ(79) =  3.36384d0
+MPREMSJ_V_density_PREMSJ(80) =  3.36602d0
+MPREMSJ_V_density_PREMSJ(81) =  3.36819d0
+MPREMSJ_V_density_PREMSJ(82) =  3.37036d0
+MPREMSJ_V_density_PREMSJ(83) =  3.37254d0
+MPREMSJ_V_density_PREMSJ(84) =  3.37471d0
+MPREMSJ_V_density_PREMSJ(85) =  3.37471d0
+MPREMSJ_V_density_PREMSJ(86) =  3.37688d0
+MPREMSJ_V_density_PREMSJ(87) =  3.37906d0
+MPREMSJ_V_density_PREMSJ(88) =  3.38076d0
+MPREMSJ_V_density_PREMSJ(89) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(90) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(91) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(92) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(93) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(94) =  2.90000d0
+MPREMSJ_V_density_PREMSJ(95) =  2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(96) =  2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(97) =  2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(98) =  2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(99) =  2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(100) = 2.60000d0 !2.90000d0
+MPREMSJ_V_density_PREMSJ(101) = 2.60000d0 !2.90000d0
+
+MPREMSJ_V_vp_PREMSJ(1) = 11.21818d0
+MPREMSJ_V_vp_PREMSJ(2) = 11.21662d0
+MPREMSJ_V_vp_PREMSJ(3) = 11.21197d0
+MPREMSJ_V_vp_PREMSJ(4) = 11.20421d0
+MPREMSJ_V_vp_PREMSJ(5) = 11.19334d0
+MPREMSJ_V_vp_PREMSJ(6) = 11.17937d0
+MPREMSJ_V_vp_PREMSJ(7) = 11.16229d0
+MPREMSJ_V_vp_PREMSJ(8) = 11.14211d0
+MPREMSJ_V_vp_PREMSJ(9) = 11.11883d0
+MPREMSJ_V_vp_PREMSJ(10) = 11.09244d0
+MPREMSJ_V_vp_PREMSJ(11) = 11.06294d0
+MPREMSJ_V_vp_PREMSJ(12) = 11.03034d0
+MPREMSJ_V_vp_PREMSJ(13) = 10.99463d0
+MPREMSJ_V_vp_PREMSJ(14) = 10.98656d0
+MPREMSJ_V_vp_PREMSJ(15) = 10.35538d0
+MPREMSJ_V_vp_PREMSJ(16) = 10.30941d0
+MPREMSJ_V_vp_PREMSJ(17) = 10.24930d0
+MPREMSJ_V_vp_PREMSJ(18) = 10.18713d0
+MPREMSJ_V_vp_PREMSJ(19) = 10.12262d0
+MPREMSJ_V_vp_PREMSJ(20) = 10.05543d0
+MPREMSJ_V_vp_PREMSJ(21) =  9.98525d0
+MPREMSJ_V_vp_PREMSJ(22) =  9.91177d0
+MPREMSJ_V_vp_PREMSJ(23) =  9.83467d0
+MPREMSJ_V_vp_PREMSJ(24) =  9.75364d0
+MPREMSJ_V_vp_PREMSJ(25) =  9.66837d0
+MPREMSJ_V_vp_PREMSJ(26) =  9.57853d0
+MPREMSJ_V_vp_PREMSJ(27) =  9.48381d0
+MPREMSJ_V_vp_PREMSJ(28) =  9.38390d0
+MPREMSJ_V_vp_PREMSJ(29) =  9.27849d0
+MPREMSJ_V_vp_PREMSJ(30) =  9.16726d0
+MPREMSJ_V_vp_PREMSJ(31) =  9.04988d0
+MPREMSJ_V_vp_PREMSJ(32) =  8.92606d0
+MPREMSJ_V_vp_PREMSJ(33) =  8.79547d0
+MPREMSJ_V_vp_PREMSJ(34) =  8.65780d0
+MPREMSJ_V_vp_PREMSJ(35) =  8.51273d0
+MPREMSJ_V_vp_PREMSJ(36) =  8.35995d0
+MPREMSJ_V_vp_PREMSJ(37) =  8.19915d0
+MPREMSJ_V_vp_PREMSJ(38) =  8.06458d0
+MPREMSJ_V_vp_PREMSJ(39) = 13.68862d0
+MPREMSJ_V_vp_PREMSJ(40) = 13.68369d0
+MPREMSJ_V_vp_PREMSJ(41) = 13.65949d0
+MPREMSJ_V_vp_PREMSJ(42) = 13.65234d0
+MPREMSJ_V_vp_PREMSJ(43) = 13.56798d0
+MPREMSJ_V_vp_PREMSJ(44) = 13.44953d0
+MPREMSJ_V_vp_PREMSJ(45) = 13.33296d0
+MPREMSJ_V_vp_PREMSJ(46) = 13.21765d0
+MPREMSJ_V_vp_PREMSJ(47) = 13.10299d0
+MPREMSJ_V_vp_PREMSJ(48) = 12.98835d0
+MPREMSJ_V_vp_PREMSJ(49) = 12.87311d0
+MPREMSJ_V_vp_PREMSJ(50) = 12.75667d0
+MPREMSJ_V_vp_PREMSJ(51) = 12.63839d0
+MPREMSJ_V_vp_PREMSJ(52) = 12.51767d0
+MPREMSJ_V_vp_PREMSJ(53) = 12.39389d0
+MPREMSJ_V_vp_PREMSJ(54) = 12.26642d0
+MPREMSJ_V_vp_PREMSJ(55) = 12.13466d0
+MPREMSJ_V_vp_PREMSJ(56) = 11.99798d0
+MPREMSJ_V_vp_PREMSJ(57) = 11.85576d0
+MPREMSJ_V_vp_PREMSJ(58) = 11.70739d0
+MPREMSJ_V_vp_PREMSJ(59) = 11.55225d0
+MPREMSJ_V_vp_PREMSJ(60) = 11.38972d0
+MPREMSJ_V_vp_PREMSJ(61) = 11.21918d0
+MPREMSJ_V_vp_PREMSJ(62) = 11.04001d0
+MPREMSJ_V_vp_PREMSJ(63) = 10.88533d0
+MPREMSJ_V_vp_PREMSJ(64) = 10.72743d0
+MPREMSJ_V_vp_PREMSJ(65) = 10.21852d0
+MPREMSJ_V_vp_PREMSJ(66) = 10.16454d0
+MPREMSJ_V_vp_PREMSJ(67) = 10.11055d0
+MPREMSJ_V_vp_PREMSJ(68) =  9.85588d0
+MPREMSJ_V_vp_PREMSJ(69) =  9.60122d0
+MPREMSJ_V_vp_PREMSJ(70) =  9.34655d0
+MPREMSJ_V_vp_PREMSJ(71) =  9.09193d0
+MPREMSJ_V_vp_PREMSJ(72) =  8.86489d0
+MPREMSJ_V_vp_PREMSJ(73) =  8.77848d0
+MPREMSJ_V_vp_PREMSJ(74) =  8.69204d0
+MPREMSJ_V_vp_PREMSJ(75) =  8.60561d0
+MPREMSJ_V_vp_PREMSJ(76) =  8.51920d0
+MPREMSJ_V_vp_PREMSJ(77) =  7.72930d0
+MPREMSJ_V_vp_PREMSJ(78) =  7.75230d0
+MPREMSJ_V_vp_PREMSJ(79) =  7.77531d0
+MPREMSJ_V_vp_PREMSJ(80) =  7.79831d0
+MPREMSJ_V_vp_PREMSJ(81) =  7.82132d0
+MPREMSJ_V_vp_PREMSJ(82) =  7.84432d0
+MPREMSJ_V_vp_PREMSJ(83) =  7.86732d0
+MPREMSJ_V_vp_PREMSJ(84) =  7.89031d0
+MPREMSJ_V_vp_PREMSJ(85) =  7.94982d0
+MPREMSJ_V_vp_PREMSJ(86) =  7.97251d0
+MPREMSJ_V_vp_PREMSJ(87) =  7.99522d0
+MPREMSJ_V_vp_PREMSJ(88) =  8.01295d0
+MPREMSJ_V_vp_PREMSJ(89) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(90) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(91) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(92) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(93) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(94) =  6.79151d0
+MPREMSJ_V_vp_PREMSJ(95) =  5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(96) =  5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(97) =  5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(98) =  5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(99) =  5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(100) = 5.79328d0 !6.79151d0
+MPREMSJ_V_vp_PREMSJ(101) = 5.79328d0 !6.79151d0
+
+
+MPREMSJ_V_vs_PREMSJ(1) =  3.59469d0
+MPREMSJ_V_vs_PREMSJ(2) =  3.59362d0
+MPREMSJ_V_vs_PREMSJ(3) =  3.59040d0
+MPREMSJ_V_vs_PREMSJ(4) =  3.58503d0
+MPREMSJ_V_vs_PREMSJ(5) =  3.57751d0
+MPREMSJ_V_vs_PREMSJ(6) =  3.56785d0
+MPREMSJ_V_vs_PREMSJ(7) =  3.55603d0
+MPREMSJ_V_vs_PREMSJ(8) =  3.54207d0
+MPREMSJ_V_vs_PREMSJ(9) =  3.52597d0
+MPREMSJ_V_vs_PREMSJ(10) =  3.50771d0
+MPREMSJ_V_vs_PREMSJ(11) =  3.48731d0
+MPREMSJ_V_vs_PREMSJ(12) =  3.46475d0
+MPREMSJ_V_vs_PREMSJ(13) =  3.44005d0
+MPREMSJ_V_vs_PREMSJ(14) =  3.43447d0
+MPREMSJ_V_vs_PREMSJ(15) =  0.d0
+MPREMSJ_V_vs_PREMSJ(16) =  0.d0
+MPREMSJ_V_vs_PREMSJ(17) =  0.d0
+MPREMSJ_V_vs_PREMSJ(18) =  0.d0
+MPREMSJ_V_vs_PREMSJ(19) =  0.d0
+MPREMSJ_V_vs_PREMSJ(20) =  0.d0
+MPREMSJ_V_vs_PREMSJ(21) =  0.d0
+MPREMSJ_V_vs_PREMSJ(22) =  0.d0
+MPREMSJ_V_vs_PREMSJ(23) =  0.d0
+MPREMSJ_V_vs_PREMSJ(24) =  0.d0
+MPREMSJ_V_vs_PREMSJ(25) =  0.d0
+MPREMSJ_V_vs_PREMSJ(26) =  0.d0
+MPREMSJ_V_vs_PREMSJ(27) =  0.d0
+MPREMSJ_V_vs_PREMSJ(28) =  0.d0
+MPREMSJ_V_vs_PREMSJ(29) =  0.d0
+MPREMSJ_V_vs_PREMSJ(30) =  0.d0
+MPREMSJ_V_vs_PREMSJ(31) =  0.d0
+MPREMSJ_V_vs_PREMSJ(32) =  0.d0
+MPREMSJ_V_vs_PREMSJ(33) =  0.d0
+MPREMSJ_V_vs_PREMSJ(34) =  0.d0
+MPREMSJ_V_vs_PREMSJ(35) =  0.d0
+MPREMSJ_V_vs_PREMSJ(36) =  0.d0
+MPREMSJ_V_vs_PREMSJ(37) =  0.d0
+MPREMSJ_V_vs_PREMSJ(38) =  0.d0
+MPREMSJ_V_vs_PREMSJ(39) =  7.22538d0
+MPREMSJ_V_vs_PREMSJ(40) =  7.22559d0
+MPREMSJ_V_vs_PREMSJ(41) =  7.22647d0
+MPREMSJ_V_vs_PREMSJ(42) =  7.22670d0
+MPREMSJ_V_vs_PREMSJ(43) =  7.19492d0
+MPREMSJ_V_vs_PREMSJ(44) =  7.15006d0
+MPREMSJ_V_vs_PREMSJ(45) =  7.10561d0
+MPREMSJ_V_vs_PREMSJ(46) =  7.06136d0
+MPREMSJ_V_vs_PREMSJ(47) =  7.01711d0
+MPREMSJ_V_vs_PREMSJ(48) =  6.97264d0
+MPREMSJ_V_vs_PREMSJ(49) =  6.92772d0
+MPREMSJ_V_vs_PREMSJ(50) =  6.88216d0
+MPREMSJ_V_vs_PREMSJ(51) =  6.83574d0
+MPREMSJ_V_vs_PREMSJ(52) =  6.78823d0
+MPREMSJ_V_vs_PREMSJ(53) =  6.73943d0
+MPREMSJ_V_vs_PREMSJ(54) =  6.68912d0
+MPREMSJ_V_vs_PREMSJ(55) =  6.63710d0
+MPREMSJ_V_vs_PREMSJ(56) =  6.58313d0
+MPREMSJ_V_vs_PREMSJ(57) =  6.52702d0
+MPREMSJ_V_vs_PREMSJ(58) =  6.46855d0
+MPREMSJ_V_vs_PREMSJ(59) =  6.40749d0
+MPREMSJ_V_vs_PREMSJ(60) =  6.34365d0
+MPREMSJ_V_vs_PREMSJ(61) =  6.27680d0
+MPREMSJ_V_vs_PREMSJ(62) =  6.20672d0
+MPREMSJ_V_vs_PREMSJ(63) =  6.06124d0
+MPREMSJ_V_vs_PREMSJ(64) =  5.91294d0
+MPREMSJ_V_vs_PREMSJ(65) =  5.50452d0
+MPREMSJ_V_vs_PREMSJ(66) =  5.47775d0
+MPREMSJ_V_vs_PREMSJ(67) =  5.45097d0
+MPREMSJ_V_vs_PREMSJ(68) =  5.30682d0
+MPREMSJ_V_vs_PREMSJ(69) =  5.16268d0
+MPREMSJ_V_vs_PREMSJ(70) =  5.01854d0
+MPREMSJ_V_vs_PREMSJ(71) =  4.87442d0
+MPREMSJ_V_vs_PREMSJ(72) =  4.71364d0
+MPREMSJ_V_vs_PREMSJ(73) =  4.68252d0
+MPREMSJ_V_vs_PREMSJ(74) =  4.65139d0
+MPREMSJ_V_vs_PREMSJ(75) =  4.62027d0
+MPREMSJ_V_vs_PREMSJ(76) =  4.58914d0
+MPREMSJ_V_vs_PREMSJ(77) =  4.34748d0
+MPREMSJ_V_vs_PREMSJ(78) =  4.34297d0
+MPREMSJ_V_vs_PREMSJ(79) =  4.33846d0
+MPREMSJ_V_vs_PREMSJ(80) =  4.33395d0
+MPREMSJ_V_vs_PREMSJ(81) =  4.32943d0
+MPREMSJ_V_vs_PREMSJ(82) =  4.32492d0
+MPREMSJ_V_vs_PREMSJ(83) =  4.32041d0
+MPREMSJ_V_vs_PREMSJ(84) =  4.31590d0
+MPREMSJ_V_vs_PREMSJ(85) =  4.39645d0
+MPREMSJ_V_vs_PREMSJ(86) =  4.39186d0
+MPREMSJ_V_vs_PREMSJ(87) =  4.38726d0
+MPREMSJ_V_vs_PREMSJ(88) =  4.38368d0
+MPREMSJ_V_vs_PREMSJ(89) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(90) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(91) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(92) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(93) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(94) =  3.88904d0
+MPREMSJ_V_vs_PREMSJ(95) = 3.19101d0  !3.88904d0
+MPREMSJ_V_vs_PREMSJ(96) = 3.19101d0 !3.88904d0
+MPREMSJ_V_vs_PREMSJ(97) = 3.19101d0 !3.88904d0
+MPREMSJ_V_vs_PREMSJ(98) = 3.19101d0 !3.88904d0
+MPREMSJ_V_vs_PREMSJ(99) = 3.19101d0 !3.88904d0
+MPREMSJ_V_vs_PREMSJ(100) = 3.19101d0  !3.88904d0
+MPREMSJ_V_vs_PREMSJ(101) = 3.19101d0 !3.88904d0
+
+
+
+  if (SUPPRESS_CRUSTAL_MESH) then
+    MPREMSJ_V_vp_PREMSJ(99:101) = MPREMSJ_V_vp_PREMSJ(98)
+    MPREMSJ_V_vs_PREMSJ(99:101) = MPREMSJ_V_vs_PREMSJ(98)
+    MPREMSJ_V_density_PREMSJ(99:101) = MPREMSJ_V_density_PREMSJ(98)
+  endif
+
+
+
+MPREMSJ_V_Qkappa_PREMSJ(1) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(2) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(3) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(4) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(5) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(6) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(7) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(8) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(9) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(10) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(11) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(12) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(13) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(14) =   1328.d0
+MPREMSJ_V_Qkappa_PREMSJ(15) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(16) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(17) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(18) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(19) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(20) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(21) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(22) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(23) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(24) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(25) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(26) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(27) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(28) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(29) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(30) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(31) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(32) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(33) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(34) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(35) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(36) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(37) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(38) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(39) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(40) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(41) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(42) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(43) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(44) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(45) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(46) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(47) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(48) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(49) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(50) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(51) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(52) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(53) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(54) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(55) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(56) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(57) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(58) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(59) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(60) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(61) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(62) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(63) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(64) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(65) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(66) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(67) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(68) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(69) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(70) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(71) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(72) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(73) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(74) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(75) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(76) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(77) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(78) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(79) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(80) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(81) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(82) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(83) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(84) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(85) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(86) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(87) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(88) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(89) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(90) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(91) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(92) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(93) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(94) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(95) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(96) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(97) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(98) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(99) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(100) =  57822.d0
+MPREMSJ_V_Qkappa_PREMSJ(101) =  57822.d0
+
+
+MPREMSJ_V_Qmu_PREMSJ(1) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(2) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(3) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(4) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(5) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(6) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(7) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(8) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(9) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(10) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(11) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(12) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(13) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(14) =     85.d0
+MPREMSJ_V_Qmu_PREMSJ(15) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(16) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(17) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(18) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(19) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(20) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(21) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(22) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(23) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(24) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(25) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(26) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(27) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(28) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(29) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(30) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(31) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(32) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(33) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(34) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(35) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(36) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(37) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(38) =      0.d0
+MPREMSJ_V_Qmu_PREMSJ(39) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(40) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(41) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(42) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(43) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(44) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(45) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(46) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(47) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(48) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(49) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(50) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(51) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(52) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(53) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(54) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(55) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(56) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(57) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(58) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(59) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(60) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(61) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(62) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(63) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(64) =    312.d0
+MPREMSJ_V_Qmu_PREMSJ(65) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(66) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(67) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(68) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(69) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(70) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(71) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(72) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(73) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(74) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(75) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(76) =    143.d0
+MPREMSJ_V_Qmu_PREMSJ(77) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(78) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(79) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(80) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(81) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(82) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(83) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(84) =     80.d0
+MPREMSJ_V_Qmu_PREMSJ(85) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(86) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(87) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(88) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(89) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(90) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(91) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(92) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(93) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(94) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(95) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(96) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(97) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(98) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(99) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(100) =    600.d0
+MPREMSJ_V_Qmu_PREMSJ(101) =    600.d0
+
+
+
+
+! strip the crust and replace it by mantle if we use an external crustal model
+  if (SUPPRESS_CRUSTAL_MESH .or. USE_EXTERNAL_CRUSTAL_MODEL) then
+    do i = NR_PREMSJ-3,NR_PREMSJ
+      MPREMSJ_V_density_PREMSJ(i) = MPREMSJ_V_density_PREMSJ(NR_PREMSJ-4)
+      MPREMSJ_V_vp_PREMSJ(i) = MPREMSJ_V_vp_PREMSJ(NR_PREMSJ-4)
+      MPREMSJ_V_vs_PREMSJ(i) = MPREMSJ_V_vs_PREMSJ(NR_PREMSJ-4)
+      MPREMSJ_V_Qkappa_PREMSJ(i) = MPREMSJ_V_Qkappa_PREMSJ(NR_PREMSJ-4)
+      MPREMSJ_V_Qmu_PREMSJ(i) = MPREMSJ_V_Qmu_PREMSJ(NR_PREMSJ-4)
+    enddo
+  endif
+
+  end subroutine define_model_premsj
+
