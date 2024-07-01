@@ -623,8 +623,8 @@ if (ph > AMM_V_lon(nx)) ph = AMM_V_lon(nx)-0.00001
   integer :: ier
   double precision :: Mcur,Gcur,Lcur
   double precision, DIMENSION(21) :: XE 
-  character(len=*), parameter :: drex_model = '~/geodynamic_models/plume/drex_model.xyz'
-  character(len=*), parameter :: iso_prem = '~/specfem3d_globe/DATA/DREX/iso_prem.dat'
+  character(len=*), parameter :: drex_model = 'DATA/DREX/drex_model.xyz'
+  character(len=*), parameter :: iso_prem = 'DATA/DREX/iso_prem.dat'
   
 ! read the model iso_prem model
 

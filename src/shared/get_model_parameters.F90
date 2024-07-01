@@ -466,6 +466,17 @@
     ONE_CRUST = .true.
     TRANSVERSE_ISOTROPY = .true.
 
+  case('drex_model')
+    HONOR_1D_SPHERICAL_MOHO = .true.
+    ! CRUSTAL = .true. ! with 3D crust: depends on 3D mantle reference model
+    CASE_3D = .false. ! crustal moho stretching
+    ONE_CRUST = .false. ! if true 1 element layer in top crust region
+    REFERENCE_1D_MODEL = REFERENCE_MODEL_PREM
+    TRANSVERSE_ISOTROPY = .false.
+    MODEL_3D_MANTLE_PERTUBATIONS = .true.
+    ANISOTROPIC_3D_MANTLE = .true. ! treats mantle elements as fully anisotropic
+    THREE_D_MODEL = THREE_D_MODEL_ANISO_MANTLE_DREX
+
   case ('s20rts','s20rts_paper')
     CASE_3D = .true.
     CRUSTAL = .true.
