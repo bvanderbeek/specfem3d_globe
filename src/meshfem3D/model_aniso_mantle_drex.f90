@@ -55,13 +55,14 @@
 
 ! standard routine to setup model
 
-  use constants, only: myrank,IMAIN
+  use constants, only: myrank,IMAIN,IIN
   use model_aniso_mantle_drex_par
 
   implicit none
 
   ! local parameters
   integer :: ier
+  character(len=*), parameter :: drex_model = 'DATA/DREX/drex_model.xyz'
 
 
   ! user info
@@ -71,17 +72,28 @@
    endif
 
 
+  !Read DREX model
+  open(IIN,file=drex_model,status='old',action='read',iostat=ier)
+
+  if (ier /= 0 ) stop 'Error opening file drex_model.xyz'
+
+! read the number of nodes in the three dimensions
+  read(IIN, '(a)',end = 888)
+  read(IIN, *,end = 888) nx, ny, nz
+
+888 close(IIN)
+  !print *, 'nx',nx,'ny',ny,'nz',nz
 !for drex nx801 ny401 nz71
 !for prem nx25 ny25 nz101
 
   ! allocates model arrays
   ! modify these values according to your needs
-    allocate(AMM_V_Cij(22,801,401,71), & 
-             AMM_V_pro(71),&
+    allocate(AMM_V_Cij(22,nx,ny,nz), & 
+             AMM_V_pro(nz),&
              AMM_V_Cijp(3,20),&
              AMM_V_prop(20),&
-             AMM_V_lon(801),&
-             AMM_V_colat(401), stat=ier)
+             AMM_V_lon(nx),&
+             AMM_V_colat(ny), stat=ier)
     if (ier /= 0 ) call exit_MPI(myrank,'Error allocating AMM_V arrays')
 
   ! the variables read are declared and stored in structure AMM_V
@@ -93,10 +105,10 @@
   call bcast_all_singlei(ny)
   call bcast_all_singlei(nz)
   call bcast_all_singlei(nzp)
-  call bcast_all_dp(AMM_V_Cij,22*801*401*71) !22*nx*ny*nz
-  call bcast_all_dp(AMM_V_pro,71)  !nz
-  call bcast_all_dp(AMM_V_lon,801)  !nx
-  call bcast_all_dp(AMM_V_colat,401)  !ny
+  call bcast_all_dp(AMM_V_Cij,22*nx*ny*nz) !22*nx*ny*nz
+  call bcast_all_dp(AMM_V_pro,nz)  !nz
+  call bcast_all_dp(AMM_V_lon,nx)  !nx
+  call bcast_all_dp(AMM_V_colat,ny)  !ny
   call bcast_all_dp(AMM_V_Cijp,3*20)  !3*nzp
   call bcast_all_dp(AMM_V_prop,20)  !nzp
 
