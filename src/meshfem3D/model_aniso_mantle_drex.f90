@@ -88,6 +88,7 @@
 
   ! allocates model arrays
   ! modify these values according to your needs
+  ! Uses custom iso_prem model defined by 20 elements
     allocate(AMM_V_Cij(22,nx,ny,nz), & 
              AMM_V_pro(nz),&
              AMM_V_Cijp(3,20),&
