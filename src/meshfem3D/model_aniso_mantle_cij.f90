@@ -330,6 +330,7 @@
      !outside the buffer zone
      if(ph <= AMM_V_lon(1) - thick_lbz) then
         out_flag = 2
+        goto 5
      !inside the buffer zone
      else
         dout1 = ABS( (AMM_V_lon(1) - ph) / thick_lbz ) 
@@ -343,6 +344,7 @@
      !outside the buffer zone
      if(ph >= AMM_V_lon(nx) + thick_lbz) then
         out_flag = 2
+        goto 5
      !inside the buffer zone
      else
         !Update dout if more distant from this boundary than others
@@ -357,6 +359,7 @@
      !outside the buffer zone
      if(tet <= AMM_V_colat(1) - thick_lbz) then
         out_flag = 2
+        goto 5
      !inside the buffer zone
      else
         !Update dout if more distant boundary
@@ -371,6 +374,7 @@
      !outside the buffer zone
      if(tet >= AMM_V_colat(ny) + thick_lbz) then
         out_flag = 2 
+        goto 5
      !inside the buffer zone
      else
         !Update dout if more distant boundary
@@ -386,46 +390,51 @@
      if (dout1 > 1.d0)  call exit_MPI_without_rank('dout1 > 1')
   end if
 
-! dimensionalize
-  depth = EARTH_R_KM*(R_UNIT_SPHERE - r)
-
-  if (depth <= pro(nz) .or. depth >= pro(1)) print *, 'depth',depth,'pro(nz)',pro(nz),'pro(1)',pro(1)
-  if (depth <= pro(nz) .or. depth >= pro(1)) call exit_MPI_without_rank('r out of range in build_cij')
-
-
+  !Colatitude
   ict0 = 0
   do icolat = 1,ny-1  ! I add -1 to avoid icolat=ny and ict0>ny
     if (AMM_V_colat(icolat) < tet) ict0 = ict0 + 1 
   enddo
 
+  ict1 = ict0 + 1 
+
+  ! check that parameters make sense
+  if (ict0 < 1 .or. ict0 > ny) call exit_MPI_without_rank('ict0 out of range')
+  if (ict1 < 1 .or. ict1 > ny) call exit_MPI_without_rank('ict1 out of range')
+  if (ict0 < 1 .or. ict0 > ny) print *,tet,ict0,ny,AMM_V_colat(1),AMM_V_colat(ny)
+  if (ict1 < 1 .or. ict1 > ny) print *,tet,ict1,ny,AMM_V_colat(1),AMM_V_colat(ny)
+
+  !Longitude
   icp0 = 0
   do ilon = 1,nx-1
     if (AMM_V_lon(ilon) < ph) icp0 = icp0 + 1  
   enddo
+
+  icp1 = icp0 + 1
+
+  ! check that parameters make sense
+  if (icp0 < 1 .or. icp0 > nx) print *,ph,icp0,nx,AMM_V_lon(1),AMM_V_lon(nx)
+  if (icp1 < 1 .or. icp1 > nx) print *,ph,icp0,nx,AMM_V_lon(1),AMM_V_lon(nx)
+  if (icp0 < 1 .or. icp0 > nx) call exit_MPI_without_rank('icp0 out of range')
+  if (icp1 < 1 .or. icp1 > nx) call exit_MPI_without_rank('icp1 out of range')
+
+  !Depth
+  ! dimensionalize
+5 depth = EARTH_R_KM*(R_UNIT_SPHERE - r)
+
+  if (depth <= pro(nz) .or. depth >= pro(1)) print *, 'depth',depth,'pro(nz)',pro(nz),'pro(1)',pro(1)
+  if (depth <= pro(nz) .or. depth >= pro(1)) call exit_MPI_without_rank('r out of range in build_cij')
 
   icz0 = 0
   do idep = 1,nz     
     if (pro(idep) > depth) icz0 = icz0 + 1
   enddo
 
-  ict1 = ict0 + 1 
-
-  icp1 = icp0 + 1
-
   icz1 = icz0 + 1
 
-
-  if (icp0 < 1 .or. icp0 > nx) print *,ph,icp0,nx,AMM_V_lon(1),AMM_V_lon(nx)
-  if (icp1 < 1 .or. icp1 > nx) print *,ph,icp0,nx,AMM_V_lon(1),AMM_V_lon(nx)
-  if (ict0 < 1 .or. ict0 > ny) print *,tet,ict0,ny,AMM_V_colat(1),AMM_V_colat(ny)
-  if (ict1 < 1 .or. ict1 > ny) print *,tet,ict1,ny,AMM_V_colat(1),AMM_V_colat(ny)
+  ! check that parameters make sense
   if (icz0 < 1 .or. icz0 > nz) print *,depth,icz0,nz,pro(1),pro(nz)
   if (icz1 < 1 .or. icz1 > nz) print *,depth,icz1,nz,pro(1),pro(nz)
-! check that parameters make sense
-  if (ict0 < 1 .or. ict0 > ny) call exit_MPI_without_rank('ict0 out of range')
-  if (ict1 < 1 .or. ict1 > ny) call exit_MPI_without_rank('ict1 out of range')
-  if (icp0 < 1 .or. icp0 > nx) call exit_MPI_without_rank('icp0 out of range')
-  if (icp1 < 1 .or. icp1 > nx) call exit_MPI_without_rank('icp1 out of range')
   if (icz0 < 1 .or. icz0 > nz) call exit_MPI_without_rank('icz0 out of range')
   if (icz1 < 1 .or. icz1 > nz) call exit_MPI_without_rank('icz1 out of range')
 
@@ -612,7 +621,7 @@
 
   ! -----------------------------------------------------------------------
   ! 04/06/2020 calculate isotropic elastic tensor if necessary
-  IF(1==1) THEN  
+  IF(0==1) THEN  
         ! elastic tensor for hexagonal symmetry in reduced notation:
         !      c11 c12 c13  0   0        0
         !      c12 c11 c13  0   0        0

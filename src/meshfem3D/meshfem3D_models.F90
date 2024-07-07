@@ -650,8 +650,8 @@
   integer, intent(in) :: ispec, i, j, k
 
   ! local parameters
-  double precision :: r_used!,scaleval
-  double precision :: dvp,dvs,drho,vp,vs,moho,sediment!,Nparam,Lparam,E_Chi,PwaveMod,SwaveMod
+  double precision :: r_used,scaleval
+  double precision :: dvp,dvs,drho,vp,vs,moho,sediment,Nparam,Lparam,E_Chi!,PwaveMod,SwaveMod
   double precision :: dvpv,dvph,dvsv,dvsh,deta
   double precision :: lat,lon
   double precision :: A,C,L,N,F
@@ -923,10 +923,10 @@
 
           ! 14/10/2020 just for the plot of isotropic velocities otherwise
           ! the code plots vsv 
-          vp = sqrt( ((8.d0+4.d0*eta_aniso)*vph*vph + 3.d0*vpv*vpv &
-                    + (8.d0 - 8.d0*eta_aniso)*vsv*vsv)/15.d0 )
-          vs = sqrt( ((1.d0-2.d0*eta_aniso)*vph*vph + vpv*vpv &
-                    + 5.d0*vsh*vsh + (6.d0+4.d0*eta_aniso)*vsv*vsv)/15.d0)
+          !vp = sqrt( ((8.d0+4.d0*eta_aniso)*vph*vph + 3.d0*vpv*vpv &
+          !          + (8.d0 - 8.d0*eta_aniso)*vsv*vsv)/15.d0 )
+          !vs = sqrt( ((1.d0-2.d0*eta_aniso)*vph*vph + vpv*vpv &
+          !          + 5.d0*vsh*vsh + (6.d0+4.d0*eta_aniso)*vsv*vsv)/15.d0)
 
           ! activate these 5 lines if you want to plot the isotropic velocities
           !vpv = vp
@@ -935,12 +935,13 @@
           !vsh = vs
           !eta_aniso = 1.d0
 
-          !Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
-          !Lparam = (1.d0/2.d0)*(c44+c55)
-          !scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
-          !E_Chi = (Nparam/Lparam)
+          Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
+          Lparam = (1.d0/2.d0)*(c44+c55)
+          scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
+          E_Chi = (Nparam/Lparam)
           ! put vpv=E_Chi if you want to plot radial anisotropy instead of vpv
-          ! vpv = E_Chi*1000.0d0/(scaleval*R_EARTH)
+          vpv = E_Chi*1000.0d0/(scaleval*EARTH_R)
+          vph = vpv
 
           ! 9/03/2021 rotate from radial (local) to global, needed to calculate
           ! seismograms; NB: this rotation is needed only if the tensor is
