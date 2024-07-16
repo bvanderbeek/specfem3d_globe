@@ -935,13 +935,13 @@
           !vsh = vs
           !eta_aniso = 1.d0
 
-          Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
-          Lparam = (1.d0/2.d0)*(c44+c55)
-          scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
-          E_Chi = (Nparam/Lparam)
+          ! Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
+          ! Lparam = (1.d0/2.d0)*(c44+c55)
+          ! scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
+          ! E_Chi = (Nparam/Lparam)
           ! put vpv=E_Chi if you want to plot radial anisotropy instead of vpv
-          vpv = E_Chi*1000.0d0/(scaleval*EARTH_R)
-          vph = vpv
+          ! vpv = E_Chi*1000.0d0/(scaleval*EARTH_R)
+          ! vph = vpv
 
           ! 9/03/2021 rotate from radial (local) to global, needed to calculate
           ! seismograms; NB: this rotation is needed only if the tensor is
