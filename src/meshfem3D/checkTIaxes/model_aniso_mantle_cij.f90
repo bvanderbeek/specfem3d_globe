@@ -620,7 +620,8 @@
   END IF
 
   ! -----------------------------------------------------------------------
-  IF(1==1) THEN  
+  ! 04/06/2020 calculate isotropic elastic tensor if necessary
+  IF(0==1) THEN  
         ! elastic tensor for hexagonal symmetry in reduced notation:
         !      c11 c12 c13  0   0        0
         !      c12 c11 c13  0   0        0

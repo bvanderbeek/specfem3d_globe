@@ -228,11 +228,11 @@
 
         ! checks vpv: if close to zero then there is probably an error
         !if (ABS(vpv) < 1.d-30) then
-        if (vpv < TINYVAL) then
-          print *,'Error vpv: ',vpv,' vph:',vph,' vsv: ',vsv,' vsh: ',vsh,' rho:',rho
-          print *,'radius:',r*R_PLANET_KM,' theta/phi: ',theta*180/PI,phi*180/PI
-          call exit_mpi(myrank,'Error get_model values')
-        endif
+        !if (vpv < TINYVAL) then
+        !  print *,'Error vpv: ',vpv,' vph:',vph,' vsv: ',vsv,' vsh: ',vsh,' rho:',rho
+        !  print *,'radius:',r*R_PLANET_KM,' theta/phi: ',theta*180/PI,phi*180/PI
+        !  call exit_mpi(myrank,'Error get_model values')
+        !endif
 
         !> Hejun, New attenuation assignment
         ! Define 3D and 1D attenuation after Moho stretch
@@ -248,9 +248,11 @@
 
         ! define elastic parameters in the model
         rhostore(i,j,k,ispec) = real(rho, kind=CUSTOM_REAL)
-        kappavstore(i,j,k,ispec) = real(rho*(vpv*vpv - 4.d0/3.d0*vsv*vsv), kind=CUSTOM_REAL)
+        !kappavstore(i,j,k,ispec) = real(rho*(vpv*vpv - 4.d0/3.d0*vsv*vsv), kind=CUSTOM_REAL)
+        kappavstore(i,j,k,ispec) = real(vpv, kind=CUSTOM_REAL)
         kappahstore(i,j,k,ispec) = real(rho*(vph*vph - 4.d0/3.d0*vsh*vsh), kind=CUSTOM_REAL)
-        muvstore(i,j,k,ispec) = real(rho*vsv*vsv, kind=CUSTOM_REAL)
+        !muvstore(i,j,k,ispec) = real(rho*vsv*vsv, kind=CUSTOM_REAL)
+        muvstore(i,j,k,ispec) = real(vsv, kind=CUSTOM_REAL)
         muhstore(i,j,k,ispec) = real(rho*vsh*vsh, kind=CUSTOM_REAL)
         eta_anisostore(i,j,k,ispec) = real(eta_aniso, kind=CUSTOM_REAL)
 

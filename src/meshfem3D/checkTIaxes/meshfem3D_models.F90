@@ -650,11 +650,13 @@
   integer, intent(in) :: ispec, i, j, k
 
   ! local parameters
-  double precision :: r_used
-  double precision :: dvp,dvs,drho,vp,vs,moho,sediment
+  double precision :: r_used,scaleval,scale_GPa
+  double precision :: dvp,dvs,drho,vp,vs,moho,sediment,Nparam,Lparam,E_Chi!,PwaveMod,SwaveMod
   double precision :: dvpv,dvph,dvsv,dvsh,deta
   double precision :: lat,lon
   double precision :: A,C,L,N,F
+  double precision :: perca,phi_a(3) 
+  double precision, dimension(6,6) :: Sav 
 
   real(kind=4) :: xcolat,xlon,xrad
   real(kind=4) :: xdvpv,xdvph,xdvsv,xdvsh
@@ -921,13 +923,91 @@
           vsh = sqrt(0.5d0*((c11-c12)/rho))
           eta_aniso = c13/(c11 - 2.d0*c44)
 
-          ! Rotate from radial (local) to global, needed to calculate
+          ! 14/10/2020 just for the plot of isotropic velocities otherwise
+          ! the code plots vsv 
+          !vp = sqrt( ((8.d0+4.d0*eta_aniso)*vph*vph + 3.d0*vpv*vpv &
+          !          + (8.d0 - 8.d0*eta_aniso)*vsv*vsv)/15.d0 )
+          !vs = sqrt( ((1.d0-2.d0*eta_aniso)*vph*vph + vpv*vpv &
+          !          + 5.d0*vsh*vsh + (6.d0+4.d0*eta_aniso)*vsv*vsv)/15.d0)
+
+          ! activate these 5 lines if you want to plot the isotropic velocities
+          !vpv = vp
+          !vph = vp
+          !vsv = vs
+          !vsh = vs
+          !eta_aniso = 1.d0
+
+          Nparam = (1.d0/8.d0)*(c11+c22)-(1.d0/4.d0)*(c12)+(1.d0/2.d0)*(c66)
+          Lparam = (1.d0/2.d0)*(c44+c55)
+          !scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
+          E_Chi = (Nparam/Lparam)!*1000.0d0/(scaleval*EARTH_R)
+          ! put vpv=E_Chi if you want to plot radial anisotropy instead of vpv
+          vpv = E_Chi
+          !vph = vpv
+
+          ! 9/03/2021 rotate from radial (local) to global, needed to calculate
           ! seismograms; NB: this rotation is needed only if the tensor is
           ! in radial system 
           call rotate_tensor_radial_to_global(theta,phi,c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
                                         c33,c34,c35,c36,c44,c45,c46,c55,c56,c66, &
                                         c11,c12,c13,c14,c15,c16,c22,c23,c24,c25,c26, &
                                         c33,c34,c35,c36,c44,c45,c46,c55,c56,c66)
+          !04/06/2020 - Find isotropic P and S waves moduli
+          !PwaveMod = (3.d0/15.d0)*(c11+c22+c33)+(2.d0/15.d0)*(c23+c13+c12)+(4.d0/15.d0)*(c44+c55+c66)
+          !SwaveMod = (1.d0/15.d0)*(c11+c22+c33)-(1.d0/15.d0)*(c23+c13+c12)+(3.d0/15.d0)*(c44+c55+c66)
+
+          ! calculate isotropic velocities from anisotropic tensor if necessary
+          !vph = sqrt(PwaveMod/rho) 
+          !vpv = vph
+          !vsh = sqrt(SwaveMod/rho)
+          !vsv = vsh
+          !eta_aniso = 1.d0
+
+          Sav(1,1) = c11
+          Sav(1,2) = c12; Sav(2,1) = Sav(1,2)
+          Sav(1,3) = c13; Sav(3,1) = Sav(1,3)
+          Sav(1,4) = c14; Sav(4,1) = Sav(1,4)
+          Sav(1,5) = c15; Sav(5,1) = Sav(1,5)
+          Sav(1,6) = c16; Sav(6,1) = Sav(1,6)
+          Sav(2,2) = c22
+          Sav(2,3) = c23; Sav(3,2) = Sav(2,3)
+          Sav(2,4) = c24; Sav(4,2) = Sav(2,4)
+          Sav(2,5) = c25; Sav(5,2) = Sav(2,5)
+          Sav(2,6) = c26; Sav(6,2) = Sav(2,6)
+          Sav(3,3) = c33
+          Sav(3,4) = c34; Sav(4,3) = Sav(3,4)
+          Sav(3,5) = c35; Sav(5,3) = Sav(3,5)
+          Sav(3,6) = c36; Sav(6,3) = Sav(3,6)
+          Sav(4,4) = c44
+          Sav(4,5) = c45; Sav(5,4) = Sav(4,5)
+          Sav(4,6) = c46; Sav(6,4) = Sav(4,6)
+          Sav(5,5) = c55
+          Sav(5,6) = c56; Sav(6,5) = Sav(5,6)
+          Sav(6,6) = c66
+  
+          !Scaling factors
+          scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)
+          scale_GPa =(EARTH_RHOAV/1000.d0)*((EARTH_R*scaleval/1000.d0)**2)
+          Sav = Sav*scale_GPa
+          perca = 0d0
+          IF(ABS(E_chi-1.0)*100.0 > 2) CALL DECSYM(Sav,1,perca,phi_a,1,A,C,L,N,F,eta_aniso)
+!print *,E_chi,ABS(E_chi-1.0)*100.0, perca
+          IF(perca <0.1) THEN
+!scaleval = dsqrt(PI*GRAV*EARTH_RHOAV)*(R_PLANET/1000.0d0)
+          vpv = 1.d1; vph = vpv+1; vsh = 1.d1; vsv = vsh+1; rho = 1.d1 
+          ELSE
+          vpv = perca*phi_a(1); vph = vpv 
+          vsv = perca*phi_a(2); vsh = vsv 
+          rho = perca*phi_a(3)
+!if(ABS(vpv)>ABS(rho)) print *,'aniso: ',perca,phi_a!,vpv,vph,vsv,vsh,rho
+!print *
+          !ELSE
+
+          !E_chi = E_chi*1000.0d0/(scaleval*EARTH_R)
+          !vpv = E_chi
+!print *,'iso: ',vpv,vph,vsv,vsh,rho
+!print *
+          END IF
 
         case (THREE_D_MODEL_BKMNS_GLAD)
           ! GLAD model expansion on block-mantle-spherical-harmonics

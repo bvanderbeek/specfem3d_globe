@@ -1,0 +1,29 @@
+in meshfem/rules.mk and in auxiliares/rules.mk
+
+- dec, dsyev*
+
+in meshfem3D_models.F90
+
+- call DECSYM
+- save perca*phia(1) in vpv
+- save perca*phia(2) in vsv
+- save perca*phia(3) in rho
+
+in get_model.f90
+
+- lines 231-235: commented IF(vpv<TINYVAL)
+- line 251: kappavstore = vpv
+- line 253: muvstore = vsv 
+
+in create_mass_matrices.f90
+- lines 192, 195-198, 202, 205-208, 456-466: several lines with rmass checks commented
+
+in check_mesh_resolution.f90
+- line 551: vpmax = 10!sqrt(vpmax) * scaleval
+- line 552: vsmin = 5!sqrt(vsmin) * scaleval 
+
+in save_model_meshfiles.f90
+
+- line 126: temp_store(:,:,:,:) = kappavstore(:,:,:,:) (which is phi_a(1), instead of vpv) 
+- line 135: temp_store(:,:,:,:) = muvstore(:,:,:,:) (which is phi_a(2), instead of vsv) 
+- line 143: temp_store(:,:,:,:) = rhostore(:,:,:,:) (which is phi_a(3), instead of rho) 
