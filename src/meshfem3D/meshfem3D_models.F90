@@ -701,6 +701,11 @@
       suppress_mantle_extension = .true.
     endif
 
+    ! BPV Interpolate fully anisotropic 3D model at depths below and above Moho!
+    if (THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE_CIJ) then
+      suppress_mantle_extension = .false.
+    endif
+
     ! gets parameters for isotropic 3D mantle model
     !
     ! note: there can be transverse isotropy in the mantle, but only Lame parameters
@@ -901,12 +906,8 @@
 
         case (THREE_D_MODEL_ANISO_MANTLE_CIJ)
          
-          if (r_prem>RCMB/EARTH_R .and. r_prem<RMOHO/EARTH_R)  then 
-               ! 14/07/2020 Rappisi ---> if you don't use r_used=r_prem you get problems at discontinuities 
-               r_used = r_prem
-          else  
-               r_used=RMOHO/EARTH_R
-          endif  
+          ! 14/07/2020 Rappisi ---> if you don't use r_used=r_prem you get problems at discontinuities
+          r_used = r_prem
 
           ! General cij anisotropic model (by Faccenda, Rappisi, VanderBeek)
           call model_aniso_mantle_cij(r_used,theta,phi,rho,&

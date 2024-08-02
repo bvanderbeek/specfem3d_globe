@@ -1,0 +1,28 @@
+Kludge Options
+How to modify the source code to achieve various mesh results
+
+1. Convert 3D anisotropic model to 3D isotropic model
+In src/meshfem3D/model_aniso_mantle_cij.f90.
+At line 623, toggle if-statement (true = isotropic; false = anisotropic)
+
+2. Convert 3D model to 1D model
+In src/meshfem3D/model_aniso_mantle_cij.f90.
+At lines 321-322, set interpolation points (tet, ph) to some value outside the 3D model domain e.g., (0.d0, 0.d0)
+Note, the 1D values depend on the option used for oneD_flag defined below
+
+3. Extrapolation schemes
+In src/meshfem3D/model_aniso_mantle_cij.f90.
+Controlled by the definition of oneD_flag at line 309
+oneD_flag = 0: Extrapolate to 1D isotropic average model
+oneD_flag = 1: Extrapolate to reference 1D profile (defined in src/shared/get_model_parameters.F90, line 474)
+oneD_flag = 2: Extrapolate to nearest boundary (lateral extension of model)
+
+4. Remove Crust
+In meshfem3D_models.F90.
+At lines 700, define suppress_mantle_extension = .false. to interpolate values above Moho.
+This is done automatically for the the cij models.
+
+Unused options
++ Convert to radially anisotropic (1D,3D) Model
+In src/meshfem3D/model_aniso_mantle_cij.f90.
+At line 205, toggle if-statement to true to make radially anisotropic model from full tensor
