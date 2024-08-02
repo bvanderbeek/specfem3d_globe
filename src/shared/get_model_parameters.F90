@@ -468,7 +468,7 @@
 
   case('cij_model')
     HONOR_1D_SPHERICAL_MOHO = .true.
-    ! CRUSTAL = .true. ! with 3D crust: depends on 3D mantle reference model
+    CRUSTAL = .false. ! Use 3D crustal model?
     CASE_3D = .false. ! crustal moho stretching
     ONE_CRUST = .false. ! if true 1 element layer in top crust region
     REFERENCE_1D_MODEL = REFERENCE_MODEL_AK135F_NO_MUD
