@@ -470,7 +470,7 @@
     HONOR_1D_SPHERICAL_MOHO = .true.
     CRUSTAL = .false. ! Use 3D crustal model?
     CASE_3D = .false. ! crustal moho stretching
-    ONE_CRUST = .false. ! if true 1 element layer in top crust region
+    ONE_CRUST = .true. ! if true 1 element layer in top crust region
     REFERENCE_1D_MODEL = REFERENCE_MODEL_AK135F_NO_MUD
     !REFERENCE_1D_MODEL = REFERENCE_MODEL_PREM
     TRANSVERSE_ISOTROPY = .false.
@@ -1316,8 +1316,8 @@
   case (REFERENCE_MODEL_AK135F_NO_MUD)
     ! values below entirely checked and fixed by Dimitri Komatitsch in December 2012.
     ROCEAN = 6368000.d0
-    RMIDDLE_CRUST = 6351000.d0
-    RMOHO  = 6336000.d0         ! at 35km depth
+    RMIDDLE_CRUST = 6364000.d0 ! BPV Kludge 6351000.d0
+    RMOHO  = 6356700.d0 ! BPV Kludge 6336000.d0         ! at 35km depth
     R80    = 6293500.d0
     R220   = 6161000.d0
     R400   = 5961000.d0
