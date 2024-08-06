@@ -20,9 +20,29 @@ oneD_flag = 2: Extrapolate to nearest boundary (lateral extension of model)
 4. Remove Crust
 In meshfem3D_models.F90.
 At lines 700, define suppress_mantle_extension = .false. to interpolate values above Moho.
-This is done automatically for the the cij models.
+* This is option is currently commented out for the cij_model type
+
+5. Custom Moho and Crustal Velocities
+In src/shared/get_model_parameters.F90
+At line 474, 'REFERENCE_1D_MODEL' defines the default 1D model for the 3D geodynamic models
+We are using AK135 and at line 1316 you can change the depths of discontinuities used in creating the mesh
+You should then update src/meshfem3D/model_ak135.f90 with a matching depth sampling and desired velocities 
+* This is a better way to accomplish 4 if you do not want to interpolate model to surface
+* AK135 HAS BEEN MODIFIED IN THIS VERSION
+  Moho is at 14.3 km depth; pseudo mid-crustal discontinuity at 7 km (no velocity change)
+  Vp = 7.35; Vs = 4.22; Density = 3.18
 
 Unused options
 + Convert to radially anisotropic (1D,3D) Model
 In src/meshfem3D/model_aniso_mantle_cij.f90.
 At line 205, toggle if-statement to true to make radially anisotropic model from full tensor
+
+RECENT UPDATES (06-AUG-2024)
++ Updated suppress_mantle_extension option (meshfem3D_models.F90)
++ Modified AK135 model (model_ak135.f90)
+-> 14.3 km thick crust (psudo mid-crust discontinuity at 7 km)
+-> density = 3.18; vp = 7.35; vs = 4.22q
++ Reset 1D average model to far-field profile (model_aniso_mantle_cij.f90)
+-> Far-field is index 1,1
++ Using one crustal layer (get_model_parameters.F90)
++ Updated AK135 discontinuities (get_model_parameters.F90)
