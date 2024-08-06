@@ -886,6 +886,8 @@
       enddo
     enddo
     AMM_V_Cijd(:) = AMM_V_Cijd(:)/dble(nx*ny)
+    ! BPV: Far-field profile!
+    AMM_V_Cijd(:) = AMM_V_Cij(:,1,1,l)
 
     !Compute isotropic velocities
     XE(:) = AMM_V_Cijd(2:22)
