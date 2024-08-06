@@ -702,9 +702,12 @@
     endif
 
     ! BPV Interpolate fully anisotropic 3D model at depths below and above Moho!
-    if (THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE_CIJ) then
-      suppress_mantle_extension = .false.
-    endif
+    !if (THREE_D_MODEL == THREE_D_MODEL_ANISO_MANTLE_CIJ) then
+    !  suppress_mantle_extension = .false.
+    !  if (r_prem >= 0.9977) then ! Hard-coded normalized mantle extension radius
+    !    suppress_mantle_extension = .true.
+    !  endif
+    !endif
 
     ! gets parameters for isotropic 3D mantle model
     !
