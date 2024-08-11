@@ -873,10 +873,10 @@
   Mak135_V_Qkappa_ak135(130) =   182.57d0
   Mak135_V_Qkappa_ak135(131) =   182.03d0
   Mak135_V_Qkappa_ak135(132) =   182.03d0
-  Mak135_V_Qkappa_ak135(133) =   972.77d0
-  Mak135_V_Qkappa_ak135(134) =   972.77d0
-  Mak135_V_Qkappa_ak135(135) =   1368.02d0
-  Mak135_V_Qkappa_ak135(136) =   1368.02d0
+  Mak135_V_Qkappa_ak135(133) =   1170.0d0
+  Mak135_V_Qkappa_ak135(134) =   1170.0d0
+  Mak135_V_Qkappa_ak135(135) =   1170.0d0
+  Mak135_V_Qkappa_ak135(136) =   1170.0d0
 
   Mak135_V_Qmu_ak135(  1) =   85.03d0
   Mak135_V_Qmu_ak135(  2) =   85.03d0
@@ -1010,10 +1010,10 @@
   Mak135_V_Qmu_ak135(130) =   76.06d0
   Mak135_V_Qmu_ak135(131) =   75.6d0
   Mak135_V_Qmu_ak135(132) =   75.6d0
-  Mak135_V_Qmu_ak135(133) =   403.93d0
-  Mak135_V_Qmu_ak135(134) =   403.93d0
-  Mak135_V_Qmu_ak135(135) =   599.99d0
-  Mak135_V_Qmu_ak135(136) =   599.99d0
+  Mak135_V_Qmu_ak135(133) =   502.0d0
+  Mak135_V_Qmu_ak135(134) =   502.0d0
+  Mak135_V_Qmu_ak135(135) =   502.0d0
+  Mak135_V_Qmu_ak135(136) =   502.0d0
 
   ! strip the crust and replace it with mantle
   if (SUPPRESS_CRUSTAL_MESH .or. USE_EXTERNAL_CRUSTAL_MODEL) then
