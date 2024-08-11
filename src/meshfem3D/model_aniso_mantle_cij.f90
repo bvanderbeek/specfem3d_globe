@@ -303,7 +303,7 @@
   !3 options for setting the parameters in the empty grid nodes 
   !at the sides of the geodynamic model domain
   !
-  !oneD_flag = 0 --> smooth transition to the 1D profile averaged from the geodyanmic model
+  !oneD_flag = 0 --> smooth transition to the 1D profile far-field (default) *OR* averaged from the geodyanmic model (see subroutine read_aniso_mantle_model_cij)
   !oneD_flag = 1 --> smooth transition to the 1D profile present in specfem3d_globe (ak135)
   !oneD_flag = 2 --> interpolate parameters from lateral boundaries
   oneD_flag = 0
