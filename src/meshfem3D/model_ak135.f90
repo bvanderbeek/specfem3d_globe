@@ -462,10 +462,10 @@
   Mak135_V_density_ak135(130) =   3.4268d0
   Mak135_V_density_ak135(131) =   3.345d0
   Mak135_V_density_ak135(132) =   3.32d0
-  Mak135_V_density_ak135(133) =   3.18d0
-  Mak135_V_density_ak135(134) =   3.18d0
-  Mak135_V_density_ak135(135) =   3.18d0
-  Mak135_V_density_ak135(136) =   3.18d0
+  Mak135_V_density_ak135(133) =   2.82d0
+  Mak135_V_density_ak135(134) =   2.82d0
+  Mak135_V_density_ak135(135) =   2.82d0
+  Mak135_V_density_ak135(136) =   2.82d0
 
   Mak135_V_vp_ak135(  1) =   11.2622d0
   Mak135_V_vp_ak135(  2) =   11.2618d0
@@ -599,10 +599,10 @@
   Mak135_V_vp_ak135(130) =   8.0505d0
   Mak135_V_vp_ak135(131) =   8.045d0
   Mak135_V_vp_ak135(132) =   8.04d0
-  Mak135_V_vp_ak135(133) =   7.35d0
-  Mak135_V_vp_ak135(134) =   7.35d0
-  Mak135_V_vp_ak135(135) =   7.35d0
-  Mak135_V_vp_ak135(136) =   7.35d0
+  Mak135_V_vp_ak135(133) =   6.15d0
+  Mak135_V_vp_ak135(134) =   6.15d0
+  Mak135_V_vp_ak135(135) =   6.15d0
+  Mak135_V_vp_ak135(136) =   6.15d0
 
   Mak135_V_vs_ak135(  1) =   3.6678d0
   Mak135_V_vs_ak135(  2) =   3.6675d0
@@ -736,10 +736,10 @@
   Mak135_V_vs_ak135(130) =   4.5d0
   Mak135_V_vs_ak135(131) =   4.49d0
   Mak135_V_vs_ak135(132) =   4.48d0
-  Mak135_V_vs_ak135(133) =   4.22d0
-  Mak135_V_vs_ak135(134) =   4.22d0
-  Mak135_V_vs_ak135(135) =   4.22d0
-  Mak135_V_vs_ak135(136) =   4.22d0
+  Mak135_V_vs_ak135(133) =   3.655d0
+  Mak135_V_vs_ak135(134) =   3.655d0
+  Mak135_V_vs_ak135(135) =   3.655d0
+  Mak135_V_vs_ak135(136) =   3.655d0
 
   Mak135_V_Qkappa_ak135(  1) =   601.27d0
   Mak135_V_Qkappa_ak135(  2) =   601.32d0
