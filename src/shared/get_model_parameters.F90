@@ -1316,8 +1316,10 @@
   case (REFERENCE_MODEL_AK135F_NO_MUD)
     ! values below entirely checked and fixed by Dimitri Komatitsch in December 2012.
     ROCEAN = 6368000.d0
-    RMIDDLE_CRUST = 6364000.d0 ! BPV Kludge 6351000.d0
-    RMOHO  = 6356700.d0 ! BPV Kludge 6336000.d0         ! at 35km depth
+    ! RMIDDLE_CRUST = 6351000.d0
+    ! RMOHO  = 6336000.d0 ! at 35km depth
+    RMIDDLE_CRUST = 6364000.d0 ! Modified Mid-Crust 7 km !
+    RMOHO = 6356700.d0 ! Modified Moho 14.3 km !
     R80    = 6293500.d0
     R220   = 6161000.d0
     R400   = 5961000.d0
