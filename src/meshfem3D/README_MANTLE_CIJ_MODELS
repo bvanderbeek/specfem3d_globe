@@ -16,6 +16,7 @@ Default = 3D interpolation!
 In src/meshfem3D/model_aniso_mantle_cij.f90.
 Controlled by the definition of oneD_flag at line 309
 oneD_flag = 0: Extrapolate to 1D isotropic average *OR* far-field model
++ At line 890, reset 1D average profile to far-field
 oneD_flag = 1: Extrapolate to reference 1D profile (defined in src/shared/get_model_parameters.F90, line 474)
 oneD_flag = 2: Extrapolate to nearest boundary (lateral extension of model)
 Default oneD_flag = 0 and far-field!
@@ -25,27 +26,19 @@ In meshfem3D_models.F90.
 At lines 700, define suppress_mantle_extension = .false. to interpolate values above Moho.
 Default = Not activated; 1D uniform crust added
 
-5. Custom Moho and Crustal Velocities
+5. Modified AK135 Moho and Crustal Velocities
 In src/shared/get_model_parameters.F90
 At line 474, 'REFERENCE_1D_MODEL' defines the default 1D model for the 3D geodynamic models
-We are using AK135 and at line 1316 you can change the depths of discontinuities used in creating the mesh
-You should then update src/meshfem3D/model_ak135.f90 with a matching depth sampling and desired velocities 
-* This is a better way to accomplish 4 if you do not want to interpolate model to surface but still want uniform iso crustal layer
-* AK135 HAS BEEN MODIFIED IN THIS VERSION
-  Moho is at 14.3 km depth; pseudo mid-crustal discontinuity at 7 km (no velocity change)
-  Vp = 7.35; Vs = 4.22; Density = 3.18
++ We are using AK135 (REFERENCE_MODEL_AK135F_NO_MUD)
++ We are using 1-element crust (ONE_CRUST = .true.)
+At line 1316, you can change the depths of discontinuities used in creating the mesh
++ I shifted Moho to 14.3 km depth with and mid-crust to 7.0 km
+In src/meshfem3D/model_ak135.f90 update the radius sampling and desired velocities
++ I used uniform crustal properties (rho = 2.82; vp = 6.15; vs = 3.655; Qk = 1170; Qm = 502)
+**This is a better way to accomplish 4 if you do not want to interpolate model to surface but still want uniform iso crustal layer
 
 Unused options
 + Convert to radially anisotropic (1D,3D) Model
 In src/meshfem3D/model_aniso_mantle_cij.f90.
 At line 205, toggle if-statement to true to make radially anisotropic model from full tensor
 
-RECENT UPDATES (06-AUG-2024)
-+ Updated suppress_mantle_extension option (meshfem3D_models.F90)
-+ Modified AK135 model (model_ak135.f90)
--> 14.3 km thick crust (psudo mid-crust discontinuity at 7 km)
--> density = 3.18; vp = 7.35; vs = 4.22q
-+ Reset 1D average model to far-field profile (model_aniso_mantle_cij.f90)
--> Far-field is index 1,1
-+ Using one crustal layer (get_model_parameters.F90)
-+ Updated AK135 discontinuities (get_model_parameters.F90)
